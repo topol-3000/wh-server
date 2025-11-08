@@ -8,15 +8,14 @@ services:
     container_name: wormhole-server
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "8080:8080"
+      - "${WH_PORT:-8080}:${WH_PORT:-8080}"
     volumes:
-      - ./src:/app
-    environment:
-      - WH_HOST=0.0.0.0
-      - WH_PORT=8080
+      - ./src:/app/src
+    env_file:
+      - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/status')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${WH_PORT:-8080}/status')"]
       interval: 30s
       timeout: 5s
       retries: 3
