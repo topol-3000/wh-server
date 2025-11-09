@@ -7,6 +7,7 @@ import asyncio
 import logging
 
 import aiohttp_cors
+import uvloop
 from aiohttp import web
 
 from .config import Settings, get_settings
@@ -83,6 +84,9 @@ class WormHoleServer:
 
 def main() -> None:
     """Entry point for the server."""
+    # Install uvloop as the default event loop
+    uvloop.install()
+
     settings = get_settings()
     server = WormHoleServer(settings)
 
