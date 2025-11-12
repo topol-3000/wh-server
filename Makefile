@@ -63,8 +63,8 @@ clean-all: ## Remove containers, images, and all data
 
 format: ## Format code with ruff in Docker
 	@echo "Formatting code with ruff..."
-	@$(DOCKER_RUN) ruff check --fix .
-	@$(DOCKER_RUN) ruff format .
+	@$(DOCKER_RUN) ruff check --fix --no-cache .
+	@$(DOCKER_RUN) ruff format --no-cache .
 
 test: ## Run tests in Docker (placeholder)
 	@echo "Running tests..."

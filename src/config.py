@@ -17,12 +17,8 @@ class Settings(BaseSettings):
 
     host: str = Field(default="0.0.0.0", description="Server bind address")
     port: int = Field(default=8080, description="Server port", ge=1, le=65535)
-    websocket_heartbeat: int = Field(
-        default=30, description="WebSocket heartbeat interval in seconds", ge=10
-    )
-    request_timeout: float = Field(
-        default=30.0, description="Request timeout in seconds", ge=1.0
-    )
+    websocket_heartbeat: int = Field(default=30, description="WebSocket heartbeat interval in seconds", ge=10)
+    request_timeout: float = Field(default=10.0, description="Request timeout in seconds", ge=1.0)
     log_level: str = Field(default="INFO", description="Logging level")
 
 

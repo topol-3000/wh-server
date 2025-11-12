@@ -5,10 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         IS_DEV_ENV: "true"  # Set to "false" for production
-    container_name: wormhole-server
     user: "${UID:-1000}:${GID:-1000}"
-    ports:
-      - "${WH_PORT:-8080}:${WH_PORT:-8080}"
     volumes:
       - ./src:/app/src
     env_file:
@@ -20,6 +17,24 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+    networks:
+      - wormhole-network
+    expose:
+      - "8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wormhole.rule=Host(`wormhole.localhost`)"
+      - "traefik.http.routers.wormhole.entrypoints=web"
+  
+  traefik:
+    image: traefik:v3.6
+    command:
+      - "--providers.docker"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
       - wormhole-network
 

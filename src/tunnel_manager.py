@@ -52,17 +52,13 @@ class TunnelManager:
         """Get all active tunnels."""
         return self._tunnels
 
-    def register_pending_request(
-        self, request_id: str
-    ) -> asyncio.Future[dict[str, str | int]]:
+    def register_pending_request(self, request_id: str) -> asyncio.Future[dict[str, str | int]]:
         """Register a pending request and return a future for the response."""
         future: asyncio.Future[dict[str, str | int]] = asyncio.Future()
         self._pending_requests[request_id] = future
         return future
 
-    def resolve_pending_request(
-        self, request_id: str, response_data: dict[str, str | int]
-    ) -> None:
+    def resolve_pending_request(self, request_id: str, response_data: dict[str, str | int]) -> None:
         """Resolve a pending request with response data."""
         if request_id in self._pending_requests:
             future = self._pending_requests[request_id]

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WormHole Server</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WormHole Server</h1>
+        <p>HTTP tunneling service - Expose your localhost to the internet</p>
+        
+        <div class="info">
+            <h3>Active Tunnels: {tunnel_count}</h3>
+        </div>
+        
+        <h3>API Endpoints:</h3>
+        <ul>
+            <li><code>GET /status</code> - Server status and active tunnels</li>
+            <li><code>WS /tunnel</code> - Create new tunnel (WebSocket)</li>
+            <li><code>* /:subdomain/*</code> - Proxied requests</li>
+        </ul>
+        
+        <h3>Quick Start:</h3>
+        <p>Connect a client to <code>ws://{host}/tunnel</code> to create a tunnel.</p>
+    </div>
+</body>
+</html>

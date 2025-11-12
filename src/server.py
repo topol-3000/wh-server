@@ -68,9 +68,7 @@ class WormHoleServer:
         site = web.TCPSite(runner, self.settings.host, self.settings.port)
         await site.start()
 
-        logger.info(
-            f"WormHole server started on http://{self.settings.host}:{self.settings.port}"
-        )
+        logger.info(f"WormHole server started on http://{self.settings.host}:{self.settings.port}")
         logger.info("Waiting for tunnel connections...")
 
         # Keep running
