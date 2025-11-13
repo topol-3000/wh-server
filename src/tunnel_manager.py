@@ -26,7 +26,7 @@ class TunnelManager:
         """Create a new tunnel with unique ID and subdomain."""
         tunnel_id = str(uuid.uuid4())
         if subdomain is None:
-            subdomain = secrets.token_urlsafe(8)
+            subdomain = secrets.token_hex(8)
 
         tunnel = Tunnel(
             tunnel_id=tunnel_id,

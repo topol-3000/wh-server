@@ -27,18 +27,29 @@
         <p>HTTP tunneling service - Expose your localhost to the internet</p>
         
         <div class="info">
-            <h3>Active Tunnels: {tunnel_count}</h3>
+            <h3>Active Tunnels: {{ tunnel_count }}</h3>
+            <ul>
+            {% for tunnel in tunnels %}
+                <li>
+                    <strong>Subdomain:</strong> {{ tunnel.subdomain }} |
+                    <strong>Client ID:</strong> {{ tunnel.client_id }} |
+                    <strong>Created At:</strong> {{ tunnel.created_at }} |
+                    <strong>Status:</strong> {{ tunnel.status }}
+                </li>
+            {% endfor %}
+            </ul>
         </div>
         
         <h3>API Endpoints:</h3>
         <ul>
             <li><code>GET /status</code> - Server status and active tunnels</li>
             <li><code>WS /tunnel</code> - Create new tunnel (WebSocket)</li>
-            <li><code>* /:subdomain/*</code> - Proxied requests</li>
+            <li><code>* {subdomain}.{{ base_domain }}</code> - Proxied requests via subdomain</li>
         </ul>
         
         <h3>Quick Start:</h3>
-        <p>Connect a client to <code>ws://{host}/tunnel</code> to create a tunnel.</p>
+        <p>Connect a client to <code>ws://{{ host }}/tunnel</code> to create a tunnel.</p>
+        <p>Tunneled requests are accessible at <code>http://{subdomain}.{{ base_domain }}</code></p>
     </div>
 </body>
 </html>

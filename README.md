@@ -81,7 +81,7 @@ The client will:
 1. Connect to the WormHole server
 2. Receive a unique subdomain
 3. Start a local test server on port 3000
-4. Forward all requests from `http://localhost:8080/{subdomain}/*` to `http://localhost:3000/*`
+4. Forward all requests from `http://{subdomain}.localhost/*` to `http://localhost:3000/*`
 
 ### Architecture
 
@@ -161,7 +161,7 @@ Create a new tunnel connection
   "type": "connected",
   "tunnel_id": "uuid",
   "subdomain": "abc123xyz",
-  "public_url": "http://localhost:8080/abc123xyz"
+  "public_url": "http://abc123xyz.localhost"
 }
 ```
 
@@ -188,8 +188,8 @@ Create a new tunnel connection
 }
 ```
 
-### ANY `/{subdomain}/*`
-Proxied requests to tunnel clients
+### ANY `{subdomain}.{base_domain}/*`
+Proxied requests to tunnel clients via subdomain
 
 ## 🔧 Configuration
 
@@ -197,13 +197,17 @@ Environment variables:
 
 - `WH_HOST`: Server bind address (default: `0.0.0.0`)
 - `WH_PORT`: Server port (default: `8080`)
+- `WH_BASE_DOMAIN`: Base domain for subdomain routing (default: `localhost`)
 
 Update in `docker-compose.yml`:
 ```yaml
 environment:
   - WH_HOST=0.0.0.0
   - WH_PORT=8080
+  - WH_BASE_DOMAIN=localhost
 ```
+
+**Note:** When using real domains (not localhost), ensure wildcard DNS is configured to point `*.yourdomain.com` to your server.
 
 ## 🧪 Development
 

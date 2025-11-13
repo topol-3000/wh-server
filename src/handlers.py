@@ -3,8 +3,8 @@
 import asyncio
 import logging
 import uuid
-from pathlib import Path
 
+import aiohttp_jinja2
 from aiohttp import WSMsgType, web
 
 from .config import Settings
@@ -25,21 +25,18 @@ class RequestHandlers:
     def __init__(self, tunnel_manager: TunnelManager, settings: Settings) -> None:
         self.tunnel_manager = tunnel_manager
         self.settings = settings
-        self.template_dir = Path(__file__).parent / "templates"
 
     async def handle_tunnel_connect(self, request: web.Request) -> web.WebSocketResponse:
         """Handle WebSocket connection from client wanting to create a tunnel."""
         ws = web.WebSocketResponse(heartbeat=self.settings.websocket_heartbeat)
         await ws.prepare(request)
 
-        # Create tunnel
         tunnel = self.tunnel_manager.create_tunnel(websocket=ws)
 
-        # Send tunnel info to client
         message = TunnelConnectedMessage(
             tunnel_id=tunnel.tunnel_id,
             subdomain=tunnel.subdomain,
-            public_url=f"http://{request.host}/{tunnel.subdomain}",
+            public_url=f"https://{tunnel.subdomain}.{self.settings.base_domain}",
         )
         await ws.send_json(message.model_dump())
 
@@ -64,15 +61,15 @@ class RequestHandlers:
 
     async def handle_proxied_request(self, request: web.Request) -> web.Response:
         """Handle HTTP requests that should be proxied through a tunnel."""
-        # Extract subdomain from path
-        path = request.path.strip("/")
-        parts = path.split("/", 1)
+        # Get subdomain from middleware
+        subdomain = request.get("subdomain")
 
-        if not parts or not parts[0]:
+        if subdomain is None:
+            # This shouldn't happen if middleware is working correctly
             return web.Response(text="WormHole Server - No tunnel specified", status=404)
 
-        subdomain = parts[0]
-        target_path = "/" + parts[1] if len(parts) > 1 else "/"
+        # Use the full request path
+        target_path = request.path or "/"
 
         # Check if tunnel exists
         tunnel = self.tunnel_manager.get_tunnel(subdomain)
@@ -136,12 +133,15 @@ class RequestHandlers:
 
         return web.json_response(response.model_dump(mode="json"))
 
-    async def handle_index(self, request: web.Request) -> web.Response:
+    @aiohttp_jinja2.template("index.html")
+    async def handle_index(self, request: web.Request) -> dict | web.Response:
         """Return welcome page."""
         tunnel_count = self.tunnel_manager.get_tunnel_count()
+        tunnels_info = [tunnel.to_info() for tunnel in self.tunnel_manager.get_all_tunnels().values()]
 
-        template_path = self.template_dir / "index.html"
-        html_template = template_path.read_text()
-        html = html_template.format(tunnel_count=tunnel_count, host=request.host)
-
-        return web.Response(text=html, content_type="text/html")
+        return {
+            "tunnel_count": tunnel_count,
+            "tunnels": tunnels_info,
+            "host": request.host,
+            "base_domain": self.settings.base_domain,
+        }

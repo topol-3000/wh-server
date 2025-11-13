@@ -126,8 +126,12 @@ async def run_local_test_server(port: int = 3000) -> None:
 
     async def handle_request(request: web.Request) -> web.Response:
         """Handle test requests."""
+        response_text = (f"Hello from local server!\n"
+                         f"Path: {request.path}\n"
+                         f"Method: {request.method}\n"
+                         f"Query: {request.query_string}")
         return web.Response(
-            text=f"Hello from local server!\nPath: {request.path}\nMethod: {request.method}",
+            text=response_text,
             content_type="text/plain",
         )
 

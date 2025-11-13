@@ -5,13 +5,17 @@ Allows exposing local services to the public internet.
 
 import asyncio
 import logging
+from pathlib import Path
 
 import aiohttp_cors
+import aiohttp_jinja2
+import jinja2
 import uvloop
 from aiohttp import web
 
 from .config import Settings, get_settings
 from .handlers import RequestHandlers
+from .middleware import subdomain_routing_middleware
 from .tunnel_manager import TunnelManager
 
 # Configure logging
@@ -35,11 +39,18 @@ class WormHoleServer:
         app.router.add_get("/", self.handlers.handle_index)
         app.router.add_get("/status", self.handlers.handle_status)
         app.router.add_get("/tunnel", self.handlers.handle_tunnel_connect)
-        app.router.add_route("*", "/{tail:.*}", self.handlers.handle_proxied_request)
 
     async def start(self) -> None:
         """Start the WormHole server."""
-        app = web.Application()
+        app = web.Application(middlewares=[subdomain_routing_middleware])
+
+        # Store settings and proxy handler in app for middleware access
+        app["settings"] = self.settings
+        app["proxy_handler"] = self.handlers.handle_proxied_request
+
+        # Setup Jinja2 templates
+        template_path = Path(__file__).parent / "templates"
+        aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(str(template_path)))
 
         # Setup CORS
         cors = aiohttp_cors.setup(
