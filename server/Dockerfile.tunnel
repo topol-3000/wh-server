@@ -1,38 +1,35 @@
-FROM python:3.13-slim
+FROM python:3.13-slim AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    UV_SYSTEM_PYTHON=1
+    PYTHONDONTWRITEBYTECODE=1
 
-# Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy project files for dependency installation
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv (production only for tunnel service)
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev
 
-# Copy application code
-COPY src/ ./src/
+COPY src ./src
 
-# Set PYTHONPATH so Python can find the src module
-ENV PYTHONPATH=/app
+# Re-sync so project install sees actual source code
+RUN uv sync --frozen --no-dev
 
-# Create non-root user
+
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/.venv /app/.venv
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY src ./src
+
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/status')" || exit 1
-
-# Run the tunnel service
 CMD ["python", "-m", "src.tunnel_service.server"]

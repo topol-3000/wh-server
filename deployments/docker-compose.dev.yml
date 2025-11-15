@@ -2,7 +2,7 @@ services:
   wormhole-server:
     build:
       context: ../server
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.tunnel
       args:
         IS_DEV_ENV: "true"  # Set to "false" for production
     user: "${UID:-1000}:${GID:-1000}"
