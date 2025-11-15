@@ -1,23 +1,43 @@
 services:
+  nats:
+    image: nats:2.12-alpine
+    ports:
+      - "4222:4222"  # Client connections
+      - "8222:8222"  # HTTP monitoring
+    command: ["-js", "-m", "8222"]  # Enable JetStream + monitoring
+    networks:
+      - wormhole-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   wormhole-server:
     build:
       context: ../server
       dockerfile: Dockerfile.tunnel
       args:
         IS_DEV_ENV: "true"  # Set to "false" for production
+    container_name: tunnel-service
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ../server/src:/app/src
     env_file:
       - ../.env
+    environment:
+      - WH_NATS_URL=nats://nats:4222
     restart: unless-stopped
     networks:
       - wormhole-network
     expose:
       - "8080"
+    depends_on:
+      nats:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wormhole.rule=HostRegexp(`^[a-z0-9-]+\\.wormhole\\.localhost$$`) || Host(`wormhole.localhost`)"
+      - "traefik.http.routers.wormhole.rule=HostRegexp(`^[a-z0-9-]+\\.wormhole\\.localhost$$`)"
       - "traefik.http.routers.wormhole.entrypoints=web"
   
   traefik:
