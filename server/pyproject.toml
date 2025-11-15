@@ -6,15 +6,14 @@ requires-python = ">=3.13"
 dependencies = [
     "aiohttp[speedups]>=3.13.2",
     "aiohttp-cors==0.8.1",
-    "aiohttp-jinja2>=1.6",
-    "jinja2>=3.1.6",
     "pydantic>=2.12.4",
     "pydantic-settings>=2.11.0",
     "uvloop>=0.22.1",
+    "nats-py>=2.10.0",
 ]
 
 [project.scripts]
-wormhole-server = "src.server:main"
+wormhole-tunnel = "src.tunnel_service.server:main"
 
 [project.optional-dependencies]
 dev = [

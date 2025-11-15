@@ -5,9 +5,9 @@
 
 # Variables
 DOCKER_COMPOSE := docker-compose -f deployments/docker-compose.dev.yml
-DOCKER_RUN := $(DOCKER_COMPOSE) run --rm wormhole-server
+DOCKER_RUN := $(DOCKER_COMPOSE) run --rm tunnel-service
 PROJECT_NAME := wormhole-server
-CONTAINER_NAME := wormhole-server
+CONTAINER_NAME := tunnel-service
 ENV_FILE := .env
 ENV_EXAMPLE := .env.example
 

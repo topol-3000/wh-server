@@ -9,7 +9,7 @@ HTTP tunneling service exposing local services to the internet via WebSocket tun
 - **server/src/tunnel_service/server.py**: Main entry point using uvloop, sets up aiohttp app with middleware and CORS
 - **server/src/tunnel_service/tunnel_manager.py**: Manages active WebSocket connections, generates subdomains, routes requests via futures
 - **server/src/tunnel_service/handlers.py**: HTTP/WebSocket handlers for tunnel connections and proxied requests
-- **server/src/tunnel_service/middleware.py**: Subdomain extraction and routing logic (base domain → admin, subdomains → proxy)
+- **server/src/tunnel_service/middleware.py**: Subdomain extraction and routing logic (all requests go through proxy, no admin routes)
 - **server/src/shared/models.py**: Pydantic models for messages (TunnelConnectedMessage, HTTPRequestMessage, HTTPResponseMessage)
 - **server/src/shared/config.py**: Environment-based config using pydantic-settings with `WH_` prefix
 
@@ -21,7 +21,7 @@ HTTP tunneling service exposing local services to the internet via WebSocket tun
 5. Server uses asyncio.Future to match responses to pending requests (timeout: 10s default)
 
 ### Key Patterns
-- **Subdomain routing**: Middleware checks Host header → base domain goes to admin routes, subdomains always proxy (even `/status` on subdomain)
+- **Subdomain routing**: Middleware routes all requests through proxy (no admin routes to avoid conflicts with tunneled services)
 - **Request-response matching**: UUID request_ids with Future-based async waiting in `_pending_requests` dict
 - **Error handling**: Returns 404 for missing tunnels, 502 for connection errors, 504 for timeouts
 
@@ -129,7 +129,7 @@ Increment `tunnel.request_count` in handlers. Already tracked per tunnel in `Tun
 
 ## Gotchas
 
-- **Middleware routing**: Subdomain requests ALWAYS go to proxy handler, even if path matches admin routes like `/status`
+- **No admin routes**: All requests go through proxy middleware to avoid conflicts with tunneled services
 - **Request futures cleanup**: Always call `cleanup_pending_request()` in finally block to prevent memory leaks
 - **WebSocket heartbeat**: Required to detect dead connections (set via WH_WEBSOCKET_HEARTBEAT)
 - **PYTHONPATH**: Set to `/app` in container so `src` module is importable

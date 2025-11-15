@@ -1,24 +1,16 @@
-"""
-WormHole Server - HTTP Tunneling Service
-Allows exposing local services to the public internet.
-"""
+"""Tunnel service entry point (data plane)."""
 
-import asyncio
 import logging
-from pathlib import Path
 
-import aiohttp_cors
-import aiohttp_jinja2
-import jinja2
 import uvloop
 from aiohttp import web
+from aiohttp_cors import ResourceOptions
+from aiohttp_cors import setup as setup_cors
 
-from ..shared.config import Settings, get_settings
-from .handlers import RequestHandlers
-from .middleware import subdomain_routing_middleware
-from .tunnel_manager import TunnelManager
+from src.shared.config import Settings
+from src.tunnel_service.middleware import subdomain_routing_middleware
+from src.tunnel_service.nats_client import cleanup_nats, setup_nats
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -26,83 +18,49 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class WormHoleServer:
-    """Main server class for managing tunnels and proxying requests."""
+def create_app(settings: Settings | None = None) -> web.Application:
+    """Create and configure the tunnel service application."""
+    if settings is None:
+        settings = Settings()
 
-    def __init__(self, settings: Settings | None = None) -> None:
-        self.settings = settings or get_settings()
-        self.tunnel_manager = TunnelManager()
-        self.handlers = RequestHandlers(self.tunnel_manager, self.settings)
+    app = web.Application(middlewares=[subdomain_routing_middleware])
+    app["settings"] = settings
 
-    def setup_routes(self, app: web.Application) -> None:
-        """Configure application routes."""
-        app.router.add_get("/", self.handlers.handle_index)
-        app.router.add_get("/status", self.handlers.handle_status)
-        app.router.add_get("/tunnel", self.handlers.handle_tunnel_connect)
+    # Setup CORS
+    cors = setup_cors(
+        app,
+        defaults={
+            "*": ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+                allow_methods="*",
+            )
+        },
+    )
 
-    async def start(self) -> None:
-        """Start the WormHole server."""
-        app = web.Application(middlewares=[subdomain_routing_middleware])
+    for route in app.router.routes():
+        cors.add(route)
 
-        # Store settings and proxy handler in app for middleware access
-        app["settings"] = self.settings
-        app["proxy_handler"] = self.handlers.handle_proxied_request
+    # Startup/cleanup
+    app.on_startup.append(lambda app: setup_nats(app))
+    app.on_cleanup.append(cleanup_nats)
 
-        # Setup Jinja2 templates
-        template_path = Path(__file__).parent / "templates"
-        aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(str(template_path)))
-
-        # Setup CORS
-        cors = aiohttp_cors.setup(
-            app,
-            defaults={
-                "*": aiohttp_cors.ResourceOptions(
-                    allow_credentials=True,
-                    expose_headers="*",
-                    allow_headers="*",
-                )
-            },
-        )
-
-        self.setup_routes(app)
-
-        # Configure CORS on all routes except the wildcard route
-        for route in list(app.router.routes()):
-            # Skip CORS for wildcard routes to avoid conflicts
-            if route.method == "*":
-                continue
-            cors.add(route)
-
-        runner = web.AppRunner(app)
-        await runner.setup()
-
-        site = web.TCPSite(runner, self.settings.host, self.settings.port)
-        await site.start()
-
-        logger.info(f"WormHole server started on http://{self.settings.host}:{self.settings.port}")
-        logger.info("Waiting for tunnel connections...")
-
-        # Keep running
-        try:
-            await asyncio.Event().wait()
-        except KeyboardInterrupt:
-            logger.info("Shutting down...")
-        finally:
-            await runner.cleanup()
+    return app
 
 
-def main() -> None:
-    """Entry point for the server."""
-    # Install uvloop as the default event loop
+def main():
+    """Run the tunnel service."""
     uvloop.install()
 
-    settings = get_settings()
-    server = WormHoleServer(settings)
+    settings = Settings()
+    app = create_app(settings)
 
-    try:
-        asyncio.run(server.start())
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
+    logger.info(f"Starting Tunnel Service on {settings.host}:{settings.port}")
+    logger.info(f"Base domain: {settings.base_domain}")
+    logger.info(f"NATS: {settings.nats_url}")
+
+    web.run_app(app, host=settings.host, port=settings.port)
 
 
 if __name__ == "__main__":
