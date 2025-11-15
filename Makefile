@@ -4,7 +4,7 @@
 .DEFAULT_GOAL := help
 
 # Variables
-DOCKER_COMPOSE := docker-compose
+DOCKER_COMPOSE := docker-compose -f deployments/docker-compose.dev.yml
 DOCKER_RUN := $(DOCKER_COMPOSE) run --rm wormhole-server
 PROJECT_NAME := wormhole-server
 CONTAINER_NAME := wormhole-server

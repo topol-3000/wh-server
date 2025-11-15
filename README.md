@@ -71,7 +71,7 @@ Run the example client to tunnel a local service:
 
 ```bash
 # Start local service on port 3000 (included in client example)
-uv run client_example.py ws://localhost:8080 3000
+uv run agent/client_example.py ws://localhost:8080 3000
 
 # Or using make
 make client
@@ -199,7 +199,7 @@ Environment variables:
 - `WH_PORT`: Server port (default: `8080`)
 - `WH_BASE_DOMAIN`: Base domain for subdomain routing (default: `localhost`)
 
-Update in `docker-compose.yml`:
+Update in `deployments/docker-compose.dev.yml`:
 ```yaml
 environment:
   - WH_HOST=0.0.0.0
@@ -234,7 +234,7 @@ make dev
 
 ### Adding Dependencies
 
-1. Edit `pyproject.toml` and add your dependency
+1. Edit `server/pyproject.toml` and add your dependency
 2. Rebuild the container:
    ```bash
    make rebuild
@@ -244,13 +244,27 @@ make dev
 
 ```
 wh-server/
-├── server.py              # Main server implementation
-├── client_example.py      # Example client
-├── pyproject.toml        # Project config and dependencies
-├── Dockerfile            # Container definition
-├── docker-compose.yml    # Compose configuration
-├── Makefile             # Development commands
-└── README.md            # This file
+├── server/                # Server code
+│   ├── src/
+│   │   ├── tunnel_service/  # Tunnel HTTP/WebSocket service
+│   │   │   ├── server.py
+│   │   │   ├── handlers.py
+│   │   │   ├── middleware.py
+│   │   │   ├── tunnel_manager.py
+│   │   │   └── templates/
+│   │   ├── ws_service/      # (Future: separate WS service)
+│   │   └── shared/          # Shared models and config
+│   │       ├── models.py
+│   │       └── config.py
+│   ├── Dockerfile
+│   └── pyproject.toml
+├── agent/                 # Client agent
+│   └── client_example.py
+├── deployments/           # Docker compose configs
+│   └── docker-compose.dev.yml
+├── docs/
+├── Makefile
+└── README.md
 ```
 
 ## 🔒 Security Considerations

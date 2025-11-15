@@ -1,0 +1,47 @@
+services:
+  wormhole-server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+      args:
+        IS_DEV_ENV: "true"  # Set to "false" for production
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ../server/src:/app/src
+    env_file:
+      - ../.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${WH_PORT:-8080}/status')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - wormhole-network
+    expose:
+      - "8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wormhole.rule=HostRegexp(`^[a-z0-9-]+\\.wormhole\\.localhost$$`) || Host(`wormhole.localhost`)"
+      - "traefik.http.routers.wormhole.entrypoints=web"
+  
+  traefik:
+    image: traefik:v3.6
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+      - "--log.level=DEBUG"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - wormhole-network
+
+networks:
+  wormhole-network:
+    driver: bridge

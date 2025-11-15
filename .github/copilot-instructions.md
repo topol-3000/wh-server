@@ -6,12 +6,12 @@ HTTP tunneling service exposing local services to the internet via WebSocket tun
 ## Architecture
 
 ### Core Components
-- **server.py**: Main entry point using uvloop, sets up aiohttp app with middleware and CORS
-- **tunnel_manager.py**: Manages active WebSocket connections, generates subdomains, routes requests via futures
-- **handlers.py**: HTTP/WebSocket handlers for tunnel connections and proxied requests
-- **middleware.py**: Subdomain extraction and routing logic (base domain → admin, subdomains → proxy)
-- **models.py**: Pydantic models for messages (TunnelConnectedMessage, HTTPRequestMessage, HTTPResponseMessage)
-- **config.py**: Environment-based config using pydantic-settings with `WH_` prefix
+- **server/src/tunnel_service/server.py**: Main entry point using uvloop, sets up aiohttp app with middleware and CORS
+- **server/src/tunnel_service/tunnel_manager.py**: Manages active WebSocket connections, generates subdomains, routes requests via futures
+- **server/src/tunnel_service/handlers.py**: HTTP/WebSocket handlers for tunnel connections and proxied requests
+- **server/src/tunnel_service/middleware.py**: Subdomain extraction and routing logic (base domain → admin, subdomains → proxy)
+- **server/src/shared/models.py**: Pydantic models for messages (TunnelConnectedMessage, HTTPRequestMessage, HTTPResponseMessage)
+- **server/src/shared/config.py**: Environment-based config using pydantic-settings with `WH_` prefix
 
 ### Request Flow
 1. Client connects via WebSocket to `/tunnel`, receives random subdomain (8-byte hex token)
@@ -39,6 +39,31 @@ make shell       # Bash in container
 make rebuild     # Rebuild after dependency changes
 ```
 
+### Project Structure
+```
+wh-server/
+├── server/                    # Server code
+│   ├── src/
+│   │   ├── tunnel_service/   # Tunnel HTTP/WebSocket service
+│   │   │   ├── server.py     # Main entry point
+│   │   │   ├── handlers.py   # Request handlers
+│   │   │   ├── middleware.py # Routing middleware
+│   │   │   ├── tunnel_manager.py
+│   │   │   └── templates/    # Jinja2 templates
+│   │   ├── ws_service/       # (Future: separate WS service)
+│   │   └── shared/           # Shared code
+│   │       ├── models.py     # Pydantic models
+│   │       └── config.py     # Settings
+│   ├── Dockerfile
+│   └── pyproject.toml
+├── agent/                     # Client agent
+│   └── client_example.py
+├── deployments/               # Docker compose configs
+│   └── docker-compose.dev.yml
+├── docs/
+└── Makefile
+```
+
 ### Code Style
 - Uses ruff for linting/formatting (config in pyproject.toml)
 - Line length: 120 chars
@@ -46,14 +71,14 @@ make rebuild     # Rebuild after dependency changes
 - Import order: standard lib → third party → local (ruff handles this)
 
 ### Adding Dependencies
-1. Edit `pyproject.toml` under `dependencies` or `dev-dependencies`
+1. Edit `server/pyproject.toml` under `dependencies` or `dev-dependencies`
 2. Run `make rebuild` to rebuild container with new deps
 3. NO manual `pip install` or `uv add` commands
 
 ### Testing
 Run client example to test tunneling:
 ```bash
-uv run client_example.py ws://localhost:8080 3000
+uv run agent/client_example.py ws://localhost:8080 3000
 ```
 
 ## Configuration
@@ -65,39 +90,39 @@ uv run client_example.py ws://localhost:8080 3000
 - `WH_WEBSOCKET_HEARTBEAT`: WS heartbeat interval in seconds (default: 30)
 - `WH_REQUEST_TIMEOUT`: Request timeout in seconds (default: 10.0)
 
-Set in `docker-compose.yml` environment section or `.env` file.
+Set in `deployments/docker-compose.dev.yml` environment section or `.env` file.
 
 ### Production Deployment
-Uses Traefik reverse proxy (configured in docker-compose.yml) for wildcard subdomain routing.
+Uses Traefik reverse proxy (configured in deployments/docker-compose.dev.yml) for wildcard subdomain routing.
 Requires wildcard DNS (`*.domain.com`) pointing to server.
 
 ## Key Files to Reference
 
 ### For WebSocket Changes
-- `handlers.py::handle_tunnel_connect()` - Connection establishment
-- `handlers.py::_handle_tunnel_message()` - Client message handling
-- `models.py` - Message schemas (strictly typed with Pydantic)
+- `server/src/tunnel_service/handlers.py::handle_tunnel_connect()` - Connection establishment
+- `server/src/tunnel_service/handlers.py::_handle_tunnel_message()` - Client message handling
+- `server/src/shared/models.py` - Message schemas (strictly typed with Pydantic)
 
 ### For Routing Changes
-- `middleware.py::subdomain_routing_middleware` - Subdomain extraction and routing logic
-- `middleware.py::extract_subdomain()` - Host header parsing
+- `server/src/tunnel_service/middleware.py::subdomain_routing_middleware` - Subdomain extraction and routing logic
+- `server/src/tunnel_service/middleware.py::extract_subdomain()` - Host header parsing
 
 ### For Request Proxying
-- `handlers.py::handle_proxied_request()` - Full proxy flow with Future-based waiting
-- `tunnel_manager.py::register_pending_request()` - Request tracking
+- `server/src/tunnel_service/handlers.py::handle_proxied_request()` - Full proxy flow with Future-based waiting
+- `server/src/tunnel_service/tunnel_manager.py::register_pending_request()` - Request tracking
 
 ## Common Tasks
 
 ### Adding New WebSocket Message Types
-1. Define Pydantic model in `models.py` with `type` field (frozen=True)
-2. Handle in `handlers.py::_handle_tunnel_message()` or `handle_tunnel_connect()`
-3. Update client_example.py if needed
+1. Define Pydantic model in `server/src/shared/models.py` with `type` field (frozen=True)
+2. Handle in `server/src/tunnel_service/handlers.py::_handle_tunnel_message()` or `handle_tunnel_connect()`
+3. Update agent/client_example.py if needed
 
 ### Changing Request/Response Format
-Update Pydantic models in `models.py` - validation is automatic. Changes must be backward compatible with existing clients.
+Update Pydantic models in `server/src/shared/models.py` - validation is automatic. Changes must be backward compatible with existing clients.
 
 ### Modifying Subdomain Generation
-Edit `tunnel_manager.py::create_tunnel()` - currently uses `secrets.token_hex(8)` for randomness.
+Edit `server/src/tunnel_service/tunnel_manager.py::create_tunnel()` - currently uses `secrets.token_hex(8)` for randomness.
 
 ### Adding Metrics/Logging
 Increment `tunnel.request_count` in handlers. Already tracked per tunnel in `Tunnel` class. Access via `TunnelInfo.request_count`.
