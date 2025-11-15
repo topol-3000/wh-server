@@ -12,15 +12,15 @@ ENV PYTHONUNBUFFERED=1 \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy project files for dependency installation
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv (install only dependencies, not the package itself)
 # Use build arg to control dev dependencies (default: production only)
 ARG IS_DEV_ENV=false
 RUN if [ "$IS_DEV_ENV" = "true" ]; then \
-        uv pip install --system --no-cache ".[dev]"; \
+        uv sync --frozen --no-install-project; \
     else \
-        uv pip install --system --no-cache . ; \
+        uv sync --frozen --no-dev --no-install-project; \
     fi
 
 # Copy application code
