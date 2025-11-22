@@ -1,49 +1,52 @@
 """Tunnel service entry point (data plane)."""
 
-import logging
+from contextlib import asynccontextmanager
 
-from aiohttp import web
+from starlette.applications import Starlette
+from starlette.routing import Route
 
-from src.shared.config import Settings
+from src.shared.config import get_settings
+from src.shared.logging import get_logger, setup_logging
 from src.tunnel_service.handlers import TunnelRequestHandler
 from src.tunnel_service.nats_client import cleanup_nats, setup_nats
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
-def create_app(settings: Settings | None = None) -> web.Application:
+@asynccontextmanager
+async def lifespan(app: Starlette):
+    """Manage application lifecycle (startup/shutdown)."""
+    setup_logging()
+    settings = get_settings()
+    logger.info("Starting Tunnel Service")
+    logger.info(f"Base domain: {settings.base_domain}")
+    logger.info(f"NATS: {settings.nats_url}")
+
+    nats_client = await setup_nats()
+    app.state.nats = nats_client
+    app.state.settings = settings
+
+    yield
+
+    await cleanup_nats(nats_client)
+    logger.info("Tunnel Service stopped")
+
+
+def create_app() -> Starlette:
     """Create and configure the tunnel service application."""
-    if settings is None:
-        settings = Settings()
-
-    app = web.Application()
-    app["settings"] = settings
-
-    handler = TunnelRequestHandler(app)
-    app.router.add_route("*", "/{tail:.*}", handler.handle)
-
-    # Startup/cleanup
-    app.on_startup.append(setup_nats)
-    app.on_cleanup.append(cleanup_nats)
+    handler = TunnelRequestHandler()
+    
+    app = Starlette(
+        debug=False,
+        routes=[
+            Route("/{path:path}",
+                  handler.handle,
+                  methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]),
+        ],
+        lifespan=lifespan,
+    )
 
     return app
 
 
-def main():
-    """Run the tunnel service."""
-    settings = Settings()
-    app = create_app(settings)
-
-    logger.info(f"Starting Tunnel Service on {settings.host}:{settings.port}")
-    logger.info(f"Base domain: {settings.base_domain}")
-    logger.info(f"NATS: {settings.nats_url}")
-
-    web.run_app(app, host=settings.host, port=settings.port)
-
-
-if __name__ == "__main__":
-    main()
+app = create_app()

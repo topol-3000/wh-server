@@ -24,9 +24,7 @@ services:
     volumes:
       - ../server/src:/app/src
     env_file:
-      - ../.env
-    environment:
-      - WH_NATS_URL=nats://nats:4222
+      - ../server/.env.tunel
     restart: unless-stopped
     networks:
       - wormhole-network
@@ -37,7 +35,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wormhole.rule=HostRegexp(`^[a-z0-9-]+\\.wormhole\\.localhost$$`)"
+      - "traefik.http.routers.wormhole.rule=HostRegexp(`^[a-z0-9-]+\\.wormhole$$`)"
       - "traefik.http.routers.wormhole.entrypoints=web"
   
   traefik:

@@ -2,10 +2,11 @@
 name = "wormhole-server"
 version = "0.1.0"
 description = "HTTP tunneling service"
-requires-python = ">=3.13"
+requires-python = "==3.13.9"
 
 dependencies = [
-    "aiohttp[speedups]>=3.13.2",
+    "starlette>=0.50.0",
+    "granian>=2.6.0",
     "pydantic>=2.12.4",
     "pydantic-settings>=2.11.0",
     "nats-py>=2.12.0",
