@@ -2,7 +2,6 @@
 
 import logging
 
-import uvloop
 from aiohttp import web
 
 from src.shared.config import Settings
@@ -36,8 +35,6 @@ def create_app(settings: Settings | None = None) -> web.Application:
 
 def main():
     """Run the tunnel service."""
-    uvloop.install()
-
     settings = Settings()
     app = create_app(settings)
 
