@@ -31,7 +31,7 @@ class TunnelRequestHandler:
 
     async def handle(self, request: Request) -> Response:
         """Public entry point used by Starlette router."""
-        tunnel_id = self._extract_tunnel_id(request)
+        tunnel_id = request.state.tunnel_id
         request_id = str(uuid4())
 
         try:
@@ -50,20 +50,8 @@ class TunnelRequestHandler:
             logger.exception(f"Request {request_id} failed due to unexpected error: {exc}")
             return Response(content="Tunnel error", status_code=502)
 
-    def _extract_tunnel_id(self, request: Request) -> str:
-        """
-        Extract the tunnel_id from the incoming Host header.
-        Falls back to the raw host if base domain is not matched.
-        """
-        host = request.headers.get("host", "").split(":")[0]
-
-        if host.endswith(f".{self.__base_domain}"):
-            return host[: -len(f".{self.__base_domain}")]
-
-        return host  # fallback: localhost / IP / unknown host
-
+    @staticmethod
     async def _build_internal_request(
-        self,
         request: Request,
         request_id: str,
         tunnel_id: str,
@@ -79,7 +67,6 @@ class TunnelRequestHandler:
             query=request.url.query or "",
             headers=dict(request.headers),
             body=body_bytes.hex() if body_bytes else "",
-            is_websocket=False,
         )
 
     async def _send_to_nats(
@@ -104,7 +91,8 @@ class TunnelRequestHandler:
 
         return InternalResponse.model_validate_json(msg.data)
 
-    def _build_http_response(self, internal_resp: InternalResponse) -> Response:
+    @staticmethod
+    def _build_http_response(internal_resp: InternalResponse) -> Response:
         """
         Translate InternalResponse → Starlette Response.
         """

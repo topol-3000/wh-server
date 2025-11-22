@@ -1,4 +1,4 @@
-"""Tunnel service entry point (data plane)."""
+"""Tunnel service entry point."""
 
 from contextlib import asynccontextmanager
 
@@ -8,6 +8,7 @@ from starlette.routing import Route
 from src.shared.config import get_settings
 from src.shared.logging import get_logger, setup_logging
 from src.tunnel_service.handlers import TunnelRequestHandler
+from src.tunnel_service.middleware import TunnelRoutingMiddleware
 from src.tunnel_service.nats_client import cleanup_nats, setup_nats
 
 logger = get_logger(__name__)
@@ -24,7 +25,6 @@ async def lifespan(app: Starlette):
 
     nats_client = await setup_nats()
     app.state.nats = nats_client
-    app.state.settings = settings
 
     yield
 
@@ -45,6 +45,8 @@ def create_app() -> Starlette:
         ],
         lifespan=lifespan,
     )
+
+    app.add_middleware(TunnelRoutingMiddleware)
 
     return app
 
