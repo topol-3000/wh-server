@@ -1,5 +1,5 @@
 """Data models for the WormHole server."""
-
+from uuid import uuid4
 from typing import Annotated
 from pydantic import BaseModel, Field
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class InternalRequest(BaseModel):
     """Internal request format sent via NATS to tunnel."""
 
-    request_id: Annotated[str, Field(description="Unique request identifier")]
+    request_id: Annotated[str, Field(description="Unique request identifier")] = str(uuid4())
     tunnel_id: Annotated[str, Field(description="Target tunnel ID")]
     method: Annotated[str, Field(description="HTTP method")]
     path: Annotated[str, Field(description="Request path")]

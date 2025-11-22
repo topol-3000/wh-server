@@ -7,9 +7,10 @@ from starlette.routing import Route
 
 from src.shared.config import get_settings
 from src.shared.logging import get_logger, setup_logging
-from src.tunnel_service.handlers import TunnelRequestHandler
+from src.tunnel_service.tunnel.nats.transport import NATSTunnelTransport
+from src.tunnel_service.handlers import proxy_request_handler
 from src.tunnel_service.middleware import TunnelRoutingMiddleware
-from src.tunnel_service.nats_client import cleanup_nats, setup_nats
+from src.tunnel_service.tunnel.nats.client import cleanup_nats, setup_nats
 
 logger = get_logger(__name__)
 
@@ -21,10 +22,10 @@ async def lifespan(app: Starlette):
     settings = get_settings()
     logger.info("Starting Tunnel Service")
     logger.info(f"Base domain: {settings.base_domain}")
-    logger.info(f"NATS: {settings.nats_url}")
 
-    nats_client = await setup_nats()
-    app.state.nats = nats_client
+    nats_client = await setup_nats(settings.nats_url)
+    transport = NATSTunnelTransport(nats_client, timeout=settings.request_timeout)
+    app.state.tunnel_transport = transport
 
     yield
 
@@ -34,14 +35,14 @@ async def lifespan(app: Starlette):
 
 def create_app() -> Starlette:
     """Create and configure the tunnel service application."""
-    handler = TunnelRequestHandler()
-    
     app = Starlette(
         debug=False,
         routes=[
-            Route("/{path:path}",
-                  handler.handle,
-                  methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]),
+            Route(
+                "/{path:path}",
+                proxy_request_handler,
+                methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            ),
         ],
         lifespan=lifespan,
     )
